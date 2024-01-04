@@ -38,3 +38,4 @@ cmake
 sample/*.exe
 #*
 .vscode
+make.exe

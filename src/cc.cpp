@@ -24,7 +24,7 @@ public:
     typedef C char_type;
 
     cmd_line_args(int argc, char_type* argv[])
-        : argv_(argv), arg_(&nil_), argc_(argc), index_(1)
+        : argv_(argv), arg_(&nil_), arg_0_(0),argc_(argc), index_(1)
         , alloc_(false), enable_opt_(true), sub_opt_(false)
         , short_idx_(0), pre_short_idx_(0), nil_(0)
     { }
@@ -42,6 +42,7 @@ public:
     bool prepare_get();
 
     char_type* get_arg() { return arg_; }
+    char_type* get_arg_0() { return arg_0_; }
 
     bool get_opt(char_type const* opt) {
         if (F & enable_short_opt) {
@@ -130,6 +131,7 @@ private:
 private:
     char_type**     argv_;
     char_type*      arg_;
+    char_type*      arg_0_;
     int             argc_;
     int             index_;
     bool            alloc_;
@@ -155,7 +157,7 @@ bool cmd_line_args<F,C>::prepare_get() {
     }
     sub_opt_ = false;
     pre_short_idx_ = short_idx_;
-    arg_ = argv_[index_++];
+    arg_ = arg_0_ = argv_[index_++];
     bool rc = enable_opt_ && arg_ && *arg_ == '-';
     return  rc;
 }
@@ -251,6 +253,7 @@ class Program {
     vector<string>      files_;
     vector<char const*> dst_args_;
     string              dmcpath_;
+    string              compilerpath_;
     char const*         exepath_;
     bool                print_args_;
 
@@ -261,23 +264,58 @@ public:
         exepath_ = argv[0];
         if (argc < 2)
             return usage();
+
+        get_dmcpath(exepath_);
+
         opts_.reserve(512);
         files_.reserve(512);
         if (conv_gcc_to_dmc_args(argc, argv) != 0)
             return 1;
-        get_dmcpath(dmcpath_, exepath_);
+
         char** dmc_argv = (char**)&dst_args_[0];
         if (print_args_) {
             for (size_t i = 0; dmc_argv[i]; ++i)
                 printf("argv[%d]=%s\n", i, dst_args_[i]);
             return 0;
         }
-        return execve(dmcpath_.c_str(), (char**)&dst_args_[0], env);
+
+        int rc = execve(dmcpath_.c_str(), (char**)&dst_args_[0], env);
+        return rc;
+    }
+
+    void get_dmcpath(char const* exepath) {
+        char buf[_MAX_PATH*2] = {0};
+        strncpy(buf, exepath, sizeof(buf)-1);
+        char* b = fname_base(buf);
+        strcpy(b, "dmc.exe");
+        dmcpath_ = buf;
+        if (!file_exist(buf)) {
+            char const* dmcdir = getenv("DMC_DIR");
+            if (!dmcdir || !file_exist(dmcdir))
+                dmcdir = getenv("DMC");
+            if (!dmcdir || !file_exist(dmcdir)) {
+                if (file_exist("c:\\dmc"))
+                    dmcdir = "c:\\dmc";
+                else //if (file_exist("c:\\dm"))
+                    dmcdir = "c:\\dm";
+            }
+            //printf("dmcdir=%s\n", dmcdir);
+            b = buf;
+            b += _snprintf(buf, (sizeof buf)-1-8, "%s\\bin\\", dmcdir);
+            strcpy(b, "dmc.exe");
+            dmcpath_ = buf;
+        }
+        *b = '\0';
+        compilerpath_ = buf;
+        str_fsl_to_bsl(compilerpath_);
+        //printf("dmc-dir=%s\n", buf);
+        //printf("dmc-exe=%s\n", dmcpath_.c_str());
     }
 
     int conv_gcc_to_dmc_args(int argc, char* argv[]) {
         cmd_line_args<> args(argc, argv);
         string          str;
+        bool            opt_linker = false;
         bool            cxx = false;
         bool            gcc = true;
         while (args.has_arg()) {
@@ -354,13 +392,18 @@ public:
                         ; //
                     }
                 } else {    // dmc
-                    if (args.get_opt("-o-", str) || args.get_opt("-o+", str)) {
-                        opts_.push_back(args.get_arg());
-                    } else  if (args.get_opt('o', str) || args.get_opt('I', str)) {
-                        opts_.push_back(args.get_arg());
+                    if (args.get_opt("-o-") || args.get_opt("-o+")) {
+                        opts_.push_back(args.get_arg_0());
+                    } else  if (args.get_opt("-o") || args.get_opt("-I")) {
+                        opts_.push_back(args.get_arg_0());
                         str_fsl_to_bsl(opts_.back());
+                    } else  if (args.get_opt("-L/")) {
+                        opts_.push_back(args.get_arg_0());
+                    } else  if (args.get_opt("-L")) {
+                        opts_.push_back(args.get_arg_0());
+                        opt_linker = true;
                     } else {
-                        opts_.push_back(args.get_arg());
+                        opts_.push_back(args.get_arg_0());
                     }
                 }
             } else { // file.
@@ -379,34 +422,18 @@ public:
             opts_.push_back("-Aa");
             opts_.push_back("-Ab");
         }
+        if (!opt_linker) {
+            opts_.push_back("-L" + compilerpath_ + "optlink.exe");
+        }
         size_t num = opts_.size() + files_.size();
         dst_args_.reserve(num + 1);
-        dst_args_.push_back(argv[0]);
+        dst_args_.push_back(dmcpath_.c_str());
         for (size_t i = 0; i < opts_.size(); ++i)
             dst_args_.push_back(opts_[i].c_str());
         for (size_t i = 0; i < files_.size(); ++i)
             dst_args_.push_back(files_[i].c_str());
         dst_args_.push_back(NULL);
         return 0;
-    }
-
-    void get_dmcpath(string& dmcpath, char const* exepath) {
-        char buf[_MAX_PATH*2] = {0};
-        strncpy(buf, exepath, sizeof(buf)-1);
-        strcpy(fname_base(buf), "dmc.exe");
-        if (!file_exist(buf)) {
-            char const* dmcdir = getenv("DMC_DIR");
-            if (!dmcdir || !file_exist(dmcdir))
-                dmcdir = getenv("DMC");
-            if (!dmcdir || !file_exist(dmcdir)) {
-                if (file_exist("c:\\dmc"))
-                    dmcdir = "c:\\dmc";
-                else //if (file_exist("c:\\dm"))
-                    dmcdir = "c:\\dm";
-            }
-            _snprintf(buf, (sizeof buf)-1, "%s\\bin\\dmc.exe", dmcdir);
-        }
-        dmcpath = buf;
     }
 
     int usage() {

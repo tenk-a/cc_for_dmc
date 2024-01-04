@@ -60,10 +60,10 @@ public:
     }
 
     template<class U>
-    bool get_opt(char_type const* opt, U& u) {
+    bool get_opt(char_type const* opt, U& u, bool next_arg=true) {
         char_type* p = get_opt1(opt);
         if (p)
-            u = get_opt_arg(p);
+            u = get_opt_arg(p, next_arg);
         return p != NULL;
     }
 
@@ -84,11 +84,11 @@ public:
     }
 
     template<class U>
-    bool get_opt(char_type c, U& u) {
+    bool get_opt(char_type c, U& u, bool next_arg=true) {
         if (F & enable_short_opt) {
             if (get_opt(c)) {
                 if (*arg_ == C('=')) ++arg_;
-                u = get_opt_arg(arg_);
+                u = get_opt_arg(arg_, next_arg);
                 short_idx_ = 0;
                 arg_ = &nil_;
                 return true;
@@ -108,8 +108,8 @@ public:
         }
     }
     template<typename U>
-    bool get_opt2(char_type c, char_type const* opt, U& u) {
-        return get_opt(c, u) || get_opt(opt, u);
+    bool get_opt2(char_type c, char_type const* opt, U& u, bool next_arg=true) {
+        return get_opt(c, u, next_arg) || get_opt(opt, u, next_arg);
     }
 
     void reset() {
@@ -126,7 +126,7 @@ public:
 
 private:
     C*      get_opt1(C const* opt);
-    C*      get_opt_arg(C* opt_arg);
+    C*      get_opt_arg(C* opt_arg, bool next_arg);
 
 private:
     char_type**     argv_;
@@ -199,11 +199,11 @@ C* cmd_line_args<F,C>::get_opt1(C const* opt) {
 }
 
 template<unsigned int F, typename C>
-C* cmd_line_args<F,C>::get_opt_arg(C* opt_arg) {
+C* cmd_line_args<F,C>::get_opt_arg(C* opt_arg, bool next_arg) {
     assert(opt_arg != 0);
     if (F & use_opt_next_arg) {
         sub_opt_ = false;
-        if (*opt_arg == 0 && index_ < argc_) {
+        if (next_arg && *opt_arg == 0 && index_ < argc_) {
             sub_opt_ = true;
             opt_arg = argv_[index_++];
         }
@@ -315,39 +315,49 @@ public:
     int conv_gcc_to_dmc_args(int argc, char* argv[]) {
         cmd_line_args<> args(argc, argv);
         string          str;
-        bool            opt_linker = false;
         bool            cxx = false;
-        bool            gcc = true;
+        bool            gccmode = true;
+        bool            opt_linker = false;
         while (args.has_arg()) {
             if (args.prepare_get()) {  // option.
                 if (args.get_opt("--help")) {
                     return usage();
-                } else if (args.get_opt("--DMC")) {
-                    gcc = false;
-                    continue;
-                } else if (args.get_opt("--GCC")) {
-                    gcc = true;
-                    continue;
                 } else if (args.get_opt("--CC-print-args", print_args_)) {
                     continue;
+                } else if (args.get_opt("--GCC")) {
+                    gccmode = true;
+                    continue;
+                } else if (args.get_opt("--NATIVE") || args.get_opt("--DMC")) {
+                    gccmode = false;
+                    continue;
                 }
-                if (gcc) {
-                    if (args.get_opt2('D', "--define-macro", str)) {
+                if (gccmode) {
+                    if (args.get_opt('D', str, false)) {
                         opts_.push_back("-D");
                         opts_.back() += str;
-                    } else if (args.get_opt2('U', "--undefine-macro", str)) {
+                    } else if (args.get_opt("--define-macro", str)) {
+                        opts_.push_back("-D");
+                        opts_.back() += str;
+                    } else if (args.get_opt('U', str, false)) {
+                        opts_.push_back("-U");
+                        opts_.back() += str;
+                    } else if (args.get_opt("--undefine-macro", str)) {
                         opts_.push_back("-U");
                         opts_.back() += str;
                     } else if (args.get_opt2('I', "--include-directory", str)) {
                         opts_.push_back("-I");
+                        //str_fsl_to_bsl(str);
                         opts_.back() += str;
-                        str_fsl_to_bsl(opts_.back());
+                    } else if (args.get_opt("--include", str)) {
+                        opts_.push_back("-HI");
+                        //str_fsl_to_bsl(str);
+                        opts_.back() += str;
                     } else if (args.get_opt('c')) {
                         opts_.push_back("-c");
                     } else  if (args.get_opt2('o', "--output", str)) {
                         opts_.push_back("-o");
+                        str_fsl_to_bsl(str);
                         opts_.back() += str;
-                        str_fsl_to_bsl(opts_.back());
                     } else if (args.get_opt("-Wall")) {
                         opts_.push_back("-w");
                     } else if (args.get_opt("-Werror")) {
@@ -392,16 +402,30 @@ public:
                         ; //
                     }
                 } else {    // dmc
-                    if (args.get_opt("-o-") || args.get_opt("-o+")) {
-                        opts_.push_back(args.get_arg_0());
-                    } else  if (args.get_opt("-o") || args.get_opt("-I")) {
-                        opts_.push_back(args.get_arg_0());
-                        str_fsl_to_bsl(opts_.back());
-                    } else  if (args.get_opt("-L/")) {
-                        opts_.push_back(args.get_arg_0());
-                    } else  if (args.get_opt("-L")) {
-                        opts_.push_back(args.get_arg_0());
-                        opt_linker = true;
+                    if (args.get_opt("-o+", str, false)) {
+                        opts_.push_back("-o+");
+                        opts_.back() += str;
+                    } else if (args.get_opt("-o-", str, false)) {
+                        opts_.push_back("-o-");
+                        opts_.back() += str;
+                    } else  if (args.get_opt("-o", str, false)) {
+                        opts_.push_back("-o");
+		                str_fsl_to_bsl(str);
+                        opts_.back() += str;
+                    } else  if (args.get_opt("-I", str, false)) {
+                        opts_.push_back("-I");
+                        //str_fsl_to_bsl(str);
+                        opts_.back() += str;
+                    } else  if (args.get_opt("-L/", str, false)) {
+                        opts_.push_back("-L/");
+                        opts_.back() += str;
+                    } else  if (args.get_opt("-L", str, false)) {
+                        opts_.push_back("-L");
+                        if (str.size() > 0) {
+	                        str_fsl_to_bsl(str);
+	                        opts_.back() += str;
+	                        opt_linker = true;
+	                    }
                     } else {
                         opts_.push_back(args.get_arg_0());
                     }
@@ -441,15 +465,16 @@ public:
         printf("      Convert and pass gcc-like command line arguments to dmc.\n"
                "      filename convert '/' to '\\'.\n"
                "  --help    help.\n"
-               "  --DMC     Afterwards dmc option.\n"
+               "  --NATIVE  Afterwards dmc option.\n"
                "  --GCC     Afterwards gcc option.\n"
-               " (gcc)                    (dmc)\n"
+               " (gcc)                   (dmc)\n"
                "  --define-macro M[=S]    -D[M[=S]]\n"
-               "  -D MACRO[=STR]          -D[MACRO[=STR]]\n"
+               "  -D[MACRO[=STR]]         -D[MACRO[=STR]]\n"
                "  --undefine-macro MACRO  -U[MACRO]\n"
-               "  -U MACRO                -U[MACRO]\n"
+               "  -U[MACRO]               -U[MACRO]\n"
                "  --include-directory DIR -I[DIR]\n"
                "  -I DIR                  -I[DIR]\n"
+               "  --include FILE          -HI[FILE]\n"
                "  --output FILE           -o[FILE]\n"
                "  -o FILE                 -o[FILE]\n"
                "  -S                      -cod\n"

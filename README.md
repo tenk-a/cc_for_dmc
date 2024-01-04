@@ -29,39 +29,40 @@ dmc\bin へのパスが通った状態で、bld\mk.bat を実行。
 usage> dmc-cc.exe [-options] filename(s)
       Convert and pass gcc-like command line arguments to dmc.
       filename convert '/' to '\'.
-  --help    help.  
-  --DMC     Afterwards dmc option.  
-  --GCC     Afterwards gcc option.  
- (gcc)                    (dmc)  
-  --define-macro M[=S]    -D[M[=S]]  
-  -D MACRO[=STR]          -D[MACRO[=STR]]  
-  --undefine-macro MACRO  -U[MACRO]  
-  -U MACRO                -U[MACRO]  
-  --include-directory DIR -I[DIR]  
-  -I DIR                  -I[DIR]  
-  --output FILE           -o[FILE]  
-  -o FILE                 -o[FILE]  
-  -S                      -cod  
-  -shared                 -WD  
-  -mdll                   -WD  
-  --debug                 -g  
-  -g                      -g  
-  -Wall                   -w  
-  -Werror                 -wx  
-  -O0                     -o+none  
-  -O1 -O2 -O3             -o+all  
-  -Ofast                  -o+speed  
-  -Os                     -o+space  
-  -Oz                     -o+space  
-  --std=c++??             -cpp  
-  --std=gnu++??           -cpp  
-  -frtti                  -Ar  
-  -fexceptions            -Ae  
-  -funsigned-char         -J  
-  -fstack-check-generic   -s  
-  -fstack-check-specific  -s  
-  --ansi                  -A  
-  -v                      -v1  
+  --help    help.
+  --NATIVE  Afterwards dmc option.
+  --GCC     Afterwards gcc option.
+ (gcc)                   (dmc)
+  --define-macro M[=S]    -D[M[=S]]
+  -D[MACRO[=STR]]         -D[MACRO[=STR]]
+  --undefine-macro MACRO  -U[MACRO]
+  -U[MACRO]               -U[MACRO]
+  --include-directory DIR -I[DIR]
+  -I DIR                  -I[DIR]
+  --include FILE          -HI[FILE]
+  --output FILE           -o[FILE]
+  -o FILE                 -o[FILE]
+  -S                      -cod
+  -shared                 -WD
+  -mdll                   -WD
+  --debug                 -g
+  -g                      -g
+  -Wall                   -w
+  -Werror                 -wx
+  -O0                     -o+none
+  -O1 -O2 -O3             -o+all
+  -Ofast                  -o+speed
+  -Os                     -o+space
+  -Oz                     -o+space
+  --std=c++??             -cpp
+  --std=gnu++??           -cpp
+  -frtti                  -Ar
+  -fexceptions            -Ae
+  -funsigned-char         -J
+  -fstack-check-generic   -s
+  -fstack-check-specific  -s
+  --ansi                  -A
+  -v                      -v1
 ```
 
 ## cmake & gnu make

@@ -251,35 +251,36 @@ using namespace std;
 class Program {
     vector<string>      opts_;
     vector<string>      files_;
+    vector<string>      libs_;
     vector<char const*> dst_args_;
-    string              dmcpath_;
-    string              compilerpath_;
-    char const*         exepath_;
+    string              exepath_;
+    string              bindir_;
+    char const*         ccpath_;
     bool                print_args_;
+	bool				verbose_;
 
 public:
-    Program() : exepath_(NULL), print_args_(false) {}
+    Program() : ccpath_(NULL), print_args_(false), verbose_(false) {}
 
     int main(int argc, char* argv[], char** env) {
-        exepath_ = argv[0];
+        ccpath_ = argv[0];
         if (argc < 2)
             return usage();
 
-        get_dmcpath(exepath_);
+        get_dmcpath(ccpath_);
 
         opts_.reserve(512);
         files_.reserve(512);
+        libs_.reserve(64);
         if (conv_gcc_to_dmc_args(argc, argv) != 0)
             return 1;
 
-        char** dmc_argv = (char**)&dst_args_[0];
-        if (print_args_) {
-            for (size_t i = 0; dmc_argv[i]; ++i)
-                printf("argv[%d]=%s\n", i, dst_args_[i]);
-            return 0;
-        }
+        char** dst_argv = (char**)&dst_args_[0];
 
-        int rc = execve(dmcpath_.c_str(), (char**)&dst_args_[0], env);
+		if (print_args(dst_argv) == 0)
+			return 0;
+
+        int rc = execve(exepath_.c_str(), (char**)&dst_args_[0], env);
         return rc;
     }
 
@@ -288,7 +289,7 @@ public:
         strncpy(buf, exepath, sizeof(buf)-1);
         char* b = fname_base(buf);
         strcpy(b, "dmc.exe");
-        dmcpath_ = buf;
+        exepath_ = buf;
         if (!file_exist(buf)) {
             char const* dmcdir = getenv("DMC_DIR");
             if (!dmcdir || !file_exist(dmcdir))
@@ -303,13 +304,13 @@ public:
             b = buf;
             b += _snprintf(buf, (sizeof buf)-1-8, "%s\\bin\\", dmcdir);
             strcpy(b, "dmc.exe");
-            dmcpath_ = buf;
+            exepath_ = buf;
         }
         *b = '\0';
-        compilerpath_ = buf;
-        str_fsl_to_bsl(compilerpath_);
+        bindir_ = buf;
+        str_fsl_to_bsl(bindir_);
         //printf("dmc-dir=%s\n", buf);
-        //printf("dmc-exe=%s\n", dmcpath_.c_str());
+        //printf("dmc-exe=%s\n", exepath_.c_str());
     }
 
     int conv_gcc_to_dmc_args(int argc, char* argv[]) {
@@ -358,6 +359,12 @@ public:
                         opts_.push_back("-o");
                         str_fsl_to_bsl(str);
                         opts_.back() += str;
+                    } else  if (args.get_opt2('L', "--library-path", str)) {
+                        opts_.push_back("-L/");
+                        str_fsl_to_bsl(str);
+                        opts_.back() += str;
+                    } else  if (args.get_opt2('l', "--library", str)) {
+                        libs_.push_back("lib" + str + ".lib");
                     } else if (args.get_opt("-Wall")) {
                         opts_.push_back("-w");
                     } else if (args.get_opt("-Werror")) {
@@ -382,11 +389,13 @@ public:
                     } else if (args.get_opt("-frtti")) {
                         opts_.push_back("-Ar");
                     } else if (args.get_opt("-fexceptions")) {
-                        opts_.push_back("--Ae");
+                        opts_.push_back("-Ae");
                     } else if (args.get_opt("-v2")) {
                         opts_.push_back("-v2");
+                        verbose_ = true;
                     } else if (args.get_opt2('v', "--verbose")) {
                         opts_.push_back("-v1");
+                        verbose_ = true;
                     } else if (args.get_opt("-fstack-check", str)) {
                         if (str != "no")
                             opts_.push_back("-s");
@@ -399,7 +408,8 @@ public:
                     } else if (args.get_opt("--ansi")) {
                         opts_.push_back("-A");
                     } else {
-                        ; //
+                        //if (verbose_)
+                        fprintf(stderr, "Ignore option %s\n", args.get_arg());
                     }
                 } else {    // dmc
                     if (args.get_opt("-o+", str, false)) {
@@ -410,7 +420,7 @@ public:
                         opts_.back() += str;
                     } else  if (args.get_opt("-o", str, false)) {
                         opts_.push_back("-o");
-		                str_fsl_to_bsl(str);
+                        str_fsl_to_bsl(str);
                         opts_.back() += str;
                     } else  if (args.get_opt("-I", str, false)) {
                         opts_.push_back("-I");
@@ -422,10 +432,17 @@ public:
                     } else  if (args.get_opt("-L", str, false)) {
                         opts_.push_back("-L");
                         if (str.size() > 0) {
-	                        str_fsl_to_bsl(str);
-	                        opts_.back() += str;
-	                        opt_linker = true;
-	                    }
+                            str_fsl_to_bsl(str);
+                            opts_.back() += str;
+                            if (str != "link")
+                                opt_linker = true;
+                        }
+                    } else if (args.get_opt("-v0")) {
+                        opts_.push_back("-v0");
+                        verbose_ = false;
+                    } else if (args.get_opt("-v1") || args.get_opt("-v2")) {
+                        opts_.push_back(args.get_arg_0());
+                        verbose_ = true;
                     } else {
                         opts_.push_back(args.get_arg_0());
                     }
@@ -447,21 +464,38 @@ public:
             opts_.push_back("-Ab");
         }
         if (!opt_linker) {
-            opts_.push_back("-L" + compilerpath_ + "optlink.exe");
+            opts_.push_back("-L" + bindir_ + "optlink.exe");
         }
         size_t num = opts_.size() + files_.size();
         dst_args_.reserve(num + 1);
-        dst_args_.push_back(dmcpath_.c_str());
+        dst_args_.push_back(exepath_.c_str());
         for (size_t i = 0; i < opts_.size(); ++i)
             dst_args_.push_back(opts_[i].c_str());
         for (size_t i = 0; i < files_.size(); ++i)
             dst_args_.push_back(files_[i].c_str());
+        for (size_t i = 0; i < libs_.size(); ++i)
+            dst_args_.push_back(libs_[i].c_str());
         dst_args_.push_back(NULL);
         return 0;
     }
 
+	int print_args(char** dst_argv) {
+        if (print_args_) {
+            for (size_t i = 0; dst_argv[i]; ++i)
+                printf("argv[%d]=%s\n", i, dst_args_[i]);
+            return 0;
+        }
+        if (verbose_) {
+			printf("[verbose] ");
+            for (size_t i = 0; dst_argv[i]; ++i)
+				printf("%s ", dst_argv[i]);
+			printf("\n");
+		}
+		return 1;
+	}
+
     int usage() {
-        printf("usage> %s [-options] filename(s)\n", fname_base(exepath_));
+        printf("usage> %s [-options] filename(s)\n", fname_base(ccpath_));
         printf("      Convert and pass gcc-like command line arguments to dmc.\n"
                "      filename convert '/' to '\\'.\n"
                "  --help    help.\n"
@@ -477,6 +511,10 @@ public:
                "  --include FILE          -HI[FILE]\n"
                "  --output FILE           -o[FILE]\n"
                "  -o FILE                 -o[FILE]\n"
+               "  --library NAME          lib[NAME].lib\n"
+               "  -l NAME                 lib[NAME].lib\n"
+               "  --library-path DIR      -L/DIR\n"
+               "  -L DIR                  -L/DIR\n"
                "  -S                      -cod\n"
                "  -shared                 -WD\n"
                "  -mdll                   -WD\n"

@@ -42,6 +42,10 @@ usage> dmc-cc.exe [-options] filename(s)
   --include FILE          -HI[FILE]
   --output FILE           -o[FILE]
   -o FILE                 -o[FILE]
+  --library NAME          lib[NAME].lib
+  -l NAME                 lib[NAME].lib
+  --library-path DIR      -L/DIR
+  -L DIR                  -L/DIR
   -S                      -cod
   -shared                 -WD
   -mdll                   -WD
@@ -87,6 +91,5 @@ cmake の引数で指定した -DCMAKE_C_COMPILER や -DCMAKE_CXX_COMPILER が�
 環境変数で指定しないとコンパイラを置き換えられなかった。  
 ※環境変数なしだと cl.exe が gccのオプション形式で使われるという奇妙な状態になる…
 
-簡単なオプションの変換しかしておらず、
-ライブラリ関係の指定方法や拡張子等いろいろ違いがあるので、
+簡単なオプションの変換しかしておらず、ライブラリ関係や拡張子等いろいろ違いがあるので、
 gccままの設定でビルドを通せるわけでないので、夢はみないように、と。

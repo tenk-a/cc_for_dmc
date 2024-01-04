@@ -1,25 +1,31 @@
-cc --CC-print-args	^
+..\bin\dmc-cc		^
+--CC-print-args		^
 -D MACRO=1              ^
--DMACRO=1              ^
+-DMACRO=1               ^
 --define-macro MACRO    ^
 -U MACRO                ^
--UMACRO                ^
+-UMACRO                 ^
 --undefine-macro MACRO  ^
--I DIR                  ^
--IDIR                  ^
+-I DIR/1/2/3            ^
+-IDIR/5/6               ^
 --include-directory DIR ^
--o FILE                 ^
--oFILE                 ^
---output FILE           ^
+--include f1/f2/FILE    ^
+-o d1/d2/FILE           ^
+-oD1/D2/FILE            ^
+--output D1/D2/FILE     ^
+--library NAME    	^
+-lNAME2             	^
+--library-path D1/DIR   ^
+-L D1/DIR2              ^
 -S                      ^
 -shared                 ^
 -mdll                   ^
 -debug                  ^
 -Wall                   ^
 -Werror                 ^
--O0 ^
--O1 ^
--O2 ^
+-O0                     ^
+-O1                     ^
+-O2                     ^
 -O3                     ^
 -Ofast                  ^
 -Os                     ^
@@ -33,8 +39,13 @@ cc --CC-print-args	^
 -fstack-check-specific  ^
 --ansi                  ^
 -v                      ^
---DMC			^
+--NATIVE		^
 -o+speed		^
+-o-speed		^
+-oFOO/BAR/BAZ		^
+-LC:FOO/BAR/BAZ		^
+-Llink			^
+-L/DEBUG		^
+-L/NODEBUG		^
 abc/def/ggg.cpp         ^
 abc/xyz/aaaa.c
-

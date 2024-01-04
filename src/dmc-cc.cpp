@@ -1,5 +1,5 @@
 /**
- *  @file   cc.cpp
+ *  @file   dmc-cc.cpp
  *  @brief  Convert and pass gcc-like command line arguments to dmc.
  *  @author Masashi Kitamura (tenka@6809.net)
  *  @date   2024-01-03

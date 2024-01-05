@@ -9,281 +9,30 @@
 #include <utility>
 #include <vector>
 #include <string>
-#include <stdio.h>
-#include <stdlib.h>
-#include <assert.h>
-#include <io.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cassert>
 #include <process.h>
 
-//namespace {
-
-template< unsigned int F=3, typename C=char>
-class cmd_line_args {
-    enum flag { use_opt_next_arg = 1, enable_short_opt = 2 };
-public:
-    typedef C char_type;
-
-    cmd_line_args(int argc, char_type* argv[])
-        : argv_(argv), arg_(&nil_), arg_0_(0),argc_(argc), index_(1)
-        , alloc_(false), enable_opt_(true), sub_opt_(false)
-        , short_idx_(0), pre_short_idx_(0), nil_(0)
-    { }
-
-    ~cmd_line_args() {}
-
-    int         argc() const { return argc_; }
-    char_type** argv() { return argv_; }
-
-    bool has_arg() const { return (index_ < argc_); }
-
-    void disable_opt() { enable_opt_ = false; }
-
-    // @return true:-option false:other
-    bool prepare_get();
-
-    char_type* get_arg() { return arg_; }
-    char_type* get_arg_0() { return arg_0_; }
-
-    bool get_opt(char_type const* opt) {
-        if (F & enable_short_opt) {
-            if (short_idx_)
-                return false;
-        }
-        char_type* p = get_opt1(opt);
-        return p != NULL && *p == 0;
-    }
-
-    bool get_opt(char_type const* opt, bool& b) {
-        char_type* p = get_opt1(opt);
-        if (p) b = *p != '-';
-        return p != NULL;
-    }
-
-    template<class U>
-    bool get_opt(char_type const* opt, U& u) { return get_opt(opt, u, true); }
-
-    template<class U>
-    bool get_opt(char_type const* opt, U& u, bool next_arg) {
-        char_type* p = get_opt1(opt);
-        if (p)
-            u = get_opt_arg(p, next_arg);
-        return p != NULL;
-    }
-
-    bool get_opt(char_type c);
-
-    bool get_opt(char_type c, bool& b) {
-        if (F & enable_short_opt) {
-            if (get_opt(c)) {
-                b = *arg_ != '-';
-                if (!b)
-                    ++arg_;
-                return true;
-            }
-        } else {
-            assert(F & enable_short_opt);
-        }
-        return false;
-    }
-
-    template<class U>
-    bool get_opt(char_type c, U& u) { return get_opt(c, u, true); }
-
-    template<class U>
-    bool get_opt(char_type c, U& u, bool next_arg) {
-        if (F & enable_short_opt) {
-            if (get_opt(c)) {
-                if (*arg_ == C('=')) ++arg_;
-                u = get_opt_arg(arg_, next_arg);
-                short_idx_ = 0;
-                arg_ = &nil_;
-                return true;
-            }
-        } else {
-            assert(F & enable_short_opt);
-        }
-        return false;
-    }
-
-    bool get_opt2(char_type c, char_type const* opt) {
-        if (F & enable_short_opt) {
-            return get_opt(c) || get_opt(opt);
-        } else {
-            assert(F & enable_short_opt);
-            return false;
-        }
-    }
-
-    template<typename U>
-    bool get_opt2(char_type c, char_type const* opt, U& u) {
-		return get_opt2(c, opt, u, true);
-	}
-
-    template<typename U>
-    bool get_opt2(char_type c, char_type const* opt, U& u, bool next_arg) {
-        return get_opt(c, u, next_arg) || get_opt(opt, u, next_arg);
-    }
-
-    bool get_opt2(char_type const* opt1, char_type const* opt2) {
-        return get_opt(opt1) || get_opt(opt2);
-    }
-
-    template<typename U>
-    bool get_opt2(char_type const* opt1, char_type const* opt2, U& u) {
-		return get_opt2(opt1, opt2, u, true);
-	}
-
-    template<typename U>
-    bool get_opt2(char_type const* opt1, char_type const* opt2, U& u, bool next_arg) {
-        return get_opt(opt1, u, next_arg) || get_opt(opt2, u, next_arg);
-    }
-
-    void reset() {
-        index_ = 1;
-    }
-
-    bool get_first_ch(C ch) {
-        if (*arg_ == ch) {
-            ++arg_;
-            return true;
-        }
-        return false;
-    }
-
-private:
-    C*      get_opt1(C const* opt);
-    C*      get_opt_arg(C* opt_arg, bool next_arg);
-
-private:
-    char_type**     argv_;
-    char_type*      arg_;
-    char_type*      arg_0_;
-    int             argc_;
-    int             index_;
-    bool            alloc_;
-    bool            enable_opt_;
-    bool            sub_opt_;
-    unsigned char   short_idx_;
-    unsigned char   pre_short_idx_;
-    char_type       nil_;
-};
-
-template<unsigned int F, typename C>
-bool cmd_line_args<F,C>::prepare_get() {
-    assert(index_ < argc_);
-    if (short_idx_) {
-        if (*arg_) {
-            if (pre_short_idx_ < short_idx_) {
-                pre_short_idx_ = short_idx_;
-                return true;
-            }
-            assert(pre_short_idx_ < short_idx_);
-        }
-        short_idx_ = 0;
-    }
-    sub_opt_ = false;
-    pre_short_idx_ = short_idx_;
-    arg_ = arg_0_ = argv_[index_++];
-    bool rc = enable_opt_ && arg_ && *arg_ == '-';
-    return  rc;
-}
-
-template<unsigned int F, typename C>
-bool cmd_line_args<F,C>::get_opt(char_type c) {
-    if (F & enable_short_opt) {
-        if (!c)
-            return false;
-        if (short_idx_) {
-            if (*arg_ == c) {
-                if (short_idx_ < 255)
-                    ++short_idx_;
-                ++arg_;
-                return true;
-            }
-        } else if (*arg_ == C('-') && arg_[1] == c) {
-            short_idx_ = 1;
-            arg_ += 2;
-            return true;
-        }
-    } else {
-        assert(F & enable_short_opt);
-    }
-    return false;
-}
-
-template<unsigned int F, typename C>
-C* cmd_line_args<F,C>::get_opt1(C const* opt) {
-    if (opt == NULL)
-        return NULL;
-    std::size_t opt_len = std::char_traits<C>::length(opt);
-    if (std::char_traits<C>::compare(arg_, opt, opt_len) == 0) {
-        C* p = arg_ + opt_len;
-        if (*p == C('=')) ++p;
-        return p;
-    }
-    return NULL;
-}
-
-template<unsigned int F, typename C>
-C* cmd_line_args<F,C>::get_opt_arg(C* opt_arg, bool next_arg) {
-    assert(opt_arg != 0);
-    if (F & use_opt_next_arg) {
-        sub_opt_ = false;
-        if (next_arg && *opt_arg == 0 && index_ < argc_) {
-            sub_opt_ = true;
-            opt_arg = argv_[index_++];
-        }
-    }
-    return opt_arg;
-}
-
-
-char*   fname_base(char const* p) {
-    char const *adr = p;
-    while (*p) {
-        char c = *p++;
-        if (c == ':' || c == '/' || c == '\\')
-            adr = p;
-    }
-    return (char*)adr;
-}
-
-char const* fname_ext(char const* p) {
-    p = fname_base(p);
-    char const* e = strrchr(p, '.');
-    return e ? e : "";
-}
-
-template<typename S>
-void str_fsl_to_bsl(S& str) {
-    typedef typename S::value_type C;
-    C* s = (C*)str.data();
-    C* e = s + str.size();
-    while (s < e) {
-        if (*s == '/')
-            *s = '\\';
-        ++s;
-    }
-}
-
-bool file_exist(char const* fpath) {
-    return ::access(fpath, 0) == 0;
-}
-
-//}
+#define ZATU_UNUSE_WCHAR_T
+#define ZATU_USE_CMD_LINE_ARGS_UTIL
+#include "cmd_line_args.hpp"
 
 using namespace std;
+using namespace zatu;
+using namespace zatu::cmd_line_args_util;
+
 
 class Program {
     vector<string>      opts_;
     vector<string>      files_;
     vector<string>      libs_;
     vector<char const*> dst_args_;
-    string              exepath_;
     string              bindir_;
+    string              exepath_;
     char const*         ccpath_;
     bool                print_args_;
-	bool				verbose_;
+    bool                verbose_;
 
 public:
     Program() : ccpath_(NULL), print_args_(false), verbose_(false) {}
@@ -293,7 +42,7 @@ public:
         if (argc < 2)
             return usage();
 
-        get_dmcpath(ccpath_);
+        get_exepath(ccpath_);
 
         opts_.reserve(512);
         files_.reserve(512);
@@ -303,14 +52,15 @@ public:
 
         char** dst_argv = (char**)&dst_args_[0];
 
-		if (print_args(dst_argv) == 0)
-			return 0;
+        if (print_args(dst_argv) == 0)
+            return 0;
 
-        int rc = execve(exepath_.c_str(), (char**)&dst_args_[0], env);
+        int rc = execve(exepath_.c_str(), dst_argv, env);
         return rc;
     }
 
-    void get_dmcpath(char const* exepath) {
+private:
+    void get_exepath(char const* exepath) {
         char buf[_MAX_PATH*2] = {0};
         strncpy(buf, exepath, sizeof(buf)-1);
         char* b = fname_base(buf);
@@ -341,10 +91,20 @@ public:
 
     int conv_gcc_to_native_args(int argc, char* argv[]) {
         cmd_line_args<> args(argc, argv);
-        string          str;
-        bool            cxx = false;
-        bool            gccmode = true;
-        bool            opt_linker = false;
+
+        // ini file load.
+        string str = ccpath_;
+        char*  ext = (char*)fname_ext(str.c_str());
+        if (strlen(ext) >= 4) {
+            strcpy(ext, ".ini");
+            if (file_exist(str.c_str()))
+                args.insert_response_str(file_load<string>(str.c_str()));
+        }
+
+        bool cxx = false;
+        bool gccmode = true;
+        bool opt_linker = false;
+
         while (args.has_arg()) {
             if (args.prepare_get()) {  // option.
                 if (args.get_opt("--help")) {
@@ -476,6 +236,8 @@ public:
                         opts_.push_back(args.get_arg_0());
                     }
                 }
+            } else if (*args.get_arg() == '@') {    // response file.
+                args.replace_response_str(file_load<string>(args.get_arg()+1));
             } else { // file.
                 files_.push_back(args.get_arg());
                 str_fsl_to_bsl(files_.back());
@@ -508,26 +270,32 @@ public:
         return 0;
     }
 
-	int print_args(char** dst_argv) {
+    int print_args(char** dst_argv) {
         if (print_args_) {
             for (size_t i = 0; dst_argv[i]; ++i)
                 printf("argv[%d]=%s\n", i, dst_args_[i]);
             return 0;
         }
         if (verbose_) {
-			printf("[verbose] ");
+            printf("[verbose] ");
             for (size_t i = 0; dst_argv[i]; ++i)
-				printf("%s ", dst_argv[i]);
-			printf("\n");
-		}
-		return 1;
-	}
+                printf("%s ", dst_argv[i]);
+            printf("\n");
+        }
+        return 1;
+    }
+
+    template<class S>
+    void str_fsl_to_bsl(S& s) {
+        str_replace(s, '/', '\\');
+    }
 
     int usage() {
         printf("usage> %s [-options] filename(s)\n", fname_base(ccpath_));
         printf("      Convert and pass gcc-like command line arguments to dmc.\n"
-               "      filename convert '/' to '\\'.\n"
-               "  --help    help.\n"
+               "      Filename convert '/' to '\\'.\n"
+               "  @FILE     Input response FILE.\n"
+               "  --help    Help.\n"
                "  --NATIVE  Afterwards dmc option.\n"
                "  --GCC     Afterwards gcc option.\n"
                " (gcc)                   (dmc)\n"

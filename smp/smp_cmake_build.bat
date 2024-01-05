@@ -17,7 +17,7 @@ if "%DMC%"=="" set DMC=c:\dmc
 set CC=%CC_DIR%\dmc-cc.exe
 set CXX=%CC_DIR%\dmc-cc.exe
 
-:: cmake --trace-expand --debug-output --debug-trycompile -G "MinGW32 Makefiles" -DCMAKE_C_COMPILER=dmc-cc -DCMAKE_CXX_COMPILER=dmc-cc ..
+:: cmake --trace-expand --debug-output --debug-trycompile -G "MinGW Makefiles" -DCMAKE_C_COMPILER=dmc-cc -DCMAKE_CXX_COMPILER=dmc-cc ..
 cmake -G "Unix Makefiles" ..
 
 make

@@ -28,8 +28,9 @@ dmc\bin へのパスが通った状態で、bld\mk.bat を実行。
 ```
 usage> dmc-cc.exe [-options] filename(s)
       Convert and pass gcc-like command line arguments to dmc.
-      filename convert '/' to '\'.
-  --help    help.
+      Filename convert '/' to '\'.
+  @FILE     Input response FILE.
+  --help    Help.
   --NATIVE  Afterwards dmc option.
   --GCC     Afterwards gcc option.
  (gcc)                   (dmc)
@@ -60,9 +61,12 @@ usage> dmc-cc.exe [-options] filename(s)
   -Oz                     -o+space
   --std=c++??             -cpp
   --std=gnu++??           -cpp
+  --std=c??               
+  --std=gnu??             
   -frtti                  -Ar
   -fexceptions            -Ae
   -funsigned-char         -J
+  -fsigned-char           
   -fstack-check-generic   -s
   -fstack-check-specific  -s
   --ansi                  -A

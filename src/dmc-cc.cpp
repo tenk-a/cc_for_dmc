@@ -60,7 +60,10 @@ public:
     }
 
     template<class U>
-    bool get_opt(char_type const* opt, U& u, bool next_arg=true) {
+    bool get_opt(char_type const* opt, U& u) { return get_opt(opt, u, true); }
+
+    template<class U>
+    bool get_opt(char_type const* opt, U& u, bool next_arg) {
         char_type* p = get_opt1(opt);
         if (p)
             u = get_opt_arg(p, next_arg);
@@ -84,7 +87,10 @@ public:
     }
 
     template<class U>
-    bool get_opt(char_type c, U& u, bool next_arg=true) {
+    bool get_opt(char_type c, U& u) { return get_opt(c, u, true); }
+
+    template<class U>
+    bool get_opt(char_type c, U& u, bool next_arg) {
         if (F & enable_short_opt) {
             if (get_opt(c)) {
                 if (*arg_ == C('=')) ++arg_;
@@ -107,9 +113,29 @@ public:
             return false;
         }
     }
+
     template<typename U>
-    bool get_opt2(char_type c, char_type const* opt, U& u, bool next_arg=true) {
+    bool get_opt2(char_type c, char_type const* opt, U& u) {
+		return get_opt2(c, opt, u, true);
+	}
+
+    template<typename U>
+    bool get_opt2(char_type c, char_type const* opt, U& u, bool next_arg) {
         return get_opt(c, u, next_arg) || get_opt(opt, u, next_arg);
+    }
+
+    bool get_opt2(char_type const* opt1, char_type const* opt2) {
+        return get_opt(opt1) || get_opt(opt2);
+    }
+
+    template<typename U>
+    bool get_opt2(char_type const* opt1, char_type const* opt2, U& u) {
+		return get_opt2(opt1, opt2, u, true);
+	}
+
+    template<typename U>
+    bool get_opt2(char_type const* opt1, char_type const* opt2, U& u, bool next_arg) {
+        return get_opt(opt1, u, next_arg) || get_opt(opt2, u, next_arg);
     }
 
     void reset() {
@@ -272,7 +298,7 @@ public:
         opts_.reserve(512);
         files_.reserve(512);
         libs_.reserve(64);
-        if (conv_gcc_to_dmc_args(argc, argv) != 0)
+        if (conv_gcc_to_native_args(argc, argv) != 0)
             return 1;
 
         char** dst_argv = (char**)&dst_args_[0];
@@ -291,29 +317,29 @@ public:
         strcpy(b, "dmc.exe");
         exepath_ = buf;
         if (!file_exist(buf)) {
-            char const* dmcdir = getenv("DMC_DIR");
-            if (!dmcdir || !file_exist(dmcdir))
-                dmcdir = getenv("DMC");
-            if (!dmcdir || !file_exist(dmcdir)) {
+            char const* envdir = getenv("DMC_DIR");
+            if (!envdir || !file_exist(envdir))
+                envdir = getenv("DMC");
+            if (!envdir || !file_exist(envdir)) {
                 if (file_exist("c:\\dmc"))
-                    dmcdir = "c:\\dmc";
+                    envdir = "c:\\dmc";
                 else //if (file_exist("c:\\dm"))
-                    dmcdir = "c:\\dm";
+                    envdir = "c:\\dm";
             }
-            //printf("dmcdir=%s\n", dmcdir);
+            //printf("envdir=%s\n", envdir);
             b = buf;
-            b += _snprintf(buf, (sizeof buf)-1-8, "%s\\bin\\", dmcdir);
+            b += _snprintf(buf, (sizeof buf)-1-8, "%s\\bin\\", envdir);
             strcpy(b, "dmc.exe");
             exepath_ = buf;
         }
         *b = '\0';
         bindir_ = buf;
         str_fsl_to_bsl(bindir_);
-        //printf("dmc-dir=%s\n", buf);
-        //printf("dmc-exe=%s\n", exepath_.c_str());
+        //printf("dir=%s\n", buf);
+        //printf("exe=%s\n", exepath_.c_str());
     }
 
-    int conv_gcc_to_dmc_args(int argc, char* argv[]) {
+    int conv_gcc_to_native_args(int argc, char* argv[]) {
         cmd_line_args<> args(argc, argv);
         string          str;
         bool            cxx = false;
@@ -372,6 +398,8 @@ public:
                     } else if (args.get_opt("--std=c++",str) || args.get_opt("--std=gnu++",str)) {
                         opts_.push_back("-cpp");
                         cxx = true;
+                    } else if (args.get_opt("--std=c",str) || args.get_opt("--std=gnu",str)) {
+                        cxx = false;
                     } else if (args.get_opt("-g")) {
                         opts_.push_back("-g");
                     } else if (args.get_opt("--debug")) {
@@ -401,6 +429,7 @@ public:
                             opts_.push_back("-s");
                     } else if (args.get_opt("-funsigned-char")) {
                         opts_.push_back("-J");
+                    } else if (args.get_opt("-fsigned-char")) {
                     } else if (args.get_opt("-shared")) {
                         opts_.push_back("-WD");
                     } else if (args.get_opt("-mdll")) {
@@ -529,9 +558,12 @@ public:
                "  -Oz                     -o+space\n"
                "  --std=c++??             -cpp\n"
                "  --std=gnu++??           -cpp\n"
+               "  --std=c??               \n"
+               "  --std=gnu??             \n"
                "  -frtti                  -Ar\n"
                "  -fexceptions            -Ae\n"
                "  -funsigned-char         -J\n"
+               "  -fsigned-char           \n"
                "  -fstack-check-generic   -s\n"
                "  -fstack-check-specific  -s\n"
                "  --ansi                  -A\n"

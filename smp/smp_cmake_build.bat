@@ -10,9 +10,9 @@ cd build
 
 del /s /q *.* >NUL
 
-if "%DMC%"=="" set DMC=c:\dmc
+if "%DMC_DIR%"=="" set DMC_DIR=c:\dmc
 
-@set "PATH=%CC_DIR%;%DMC%\bin;%PATH%"
+@set "PATH=%CC_DIR%;%DMC_DIR%\bin;%PATH%"
 
 set CC=%CC_DIR%\dmc-cc.exe
 set CXX=%CC_DIR%\dmc-cc.exe

@@ -10,7 +10,10 @@ cmake ＆ gnu make を使って dmc でのコンパイルを試しみるため�
 
 - bin\dmc-cc.exe を dmc.exe のあるフォルダに入れる
 - 環境変数 DMC_DIR か DMC に dmc ディレクトリを設定しておく
-- dmc ディレクトリを c:\dmc か c:\dm にする
+- dmc ディレクトリを c:\dm、c:\DMC\dm、c:\dmc にする  
+　　　　※ \dm　　　CD版、DL版をそのままc:に置いた場合.  
+　　　　　 \DMC\dm　dmd の installer で一緒に install した場合.  
+　　　　　 \dmc　　 https://github.com/digitalmars/dmc をままcloneした場合.
 
 のいずれかを行う。
 
@@ -19,9 +22,11 @@ cmake ＆ gnu make を使って dmc でのコンパイルを試しみるため�
 https://github.com/digitalmars/dmc.git
 
 を clone した dmc 環境を使う。  
-※ 付属の stlport を使うため、この環境が楽。
+(CD版相当のようなので、16bit exe 作成やその当時のIDEやデバッガ付属)  
+あるいは dmd同時インストールや DigitalMars サイトのDL版
+の 32bit 最小構成でもよく。
 
-dmc\bin へのパスが通った状態で、bld\mk.bat を実行。
+(Dmc-Dir)\bin\dmc.exe へのパスが通った状態で、bld\mk.bat を実行。
 
 ## Usage
 
@@ -78,7 +83,8 @@ usage> dmc-cc.exe [-options] filename(s)
 cmake で -G "Unix Makefiles" か "MinGW32 Makefiles" で
 お試しできるように作成。  
 
-gnu make は、dllの柵なく単体利用できる GnuWin32 や MinGW32-make を想定。
+gnu make は、dllの柵なく単体利用できる GnuWin32 や MinGW32-make を想定。  
+名前は make.exe にしておく。
 
 一応 dmc のリンカとして link.exe でなく optlink.exe を使う設定にするので、
 dmc より優先して msys 等のパスを通せば その make が使えるかも。

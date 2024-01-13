@@ -71,10 +71,12 @@ private:
             if (!envdir || !file_exist(envdir))
                 envdir = getenv("DMC");
             if (!envdir || !file_exist(envdir)) {
-                if (file_exist("c:\\dmc"))
-                    envdir = "c:\\dmc";
-                else //if (file_exist("c:\\dm"))
+                if (file_exist("c:\\dm\\bin"))
                     envdir = "c:\\dm";
+                else if (file_exist("c:\\DMC\\dm\\bin"))
+                    envdir = "c:\\dmc\\dm";
+                else //if (file_exist("c:\\dmc\\bin"))
+                    envdir = "c:\\dmc";
             }
             //printf("envdir=%s\n", envdir);
             b = buf;

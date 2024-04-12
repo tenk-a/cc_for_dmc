@@ -39,3 +39,5 @@ sample/*.exe
 #*
 .vscode
 make.exe
+wlink*.*
+wlib*.*

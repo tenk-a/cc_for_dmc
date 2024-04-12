@@ -257,7 +257,15 @@ private:
             opts_.push_back("-Ab");
         }
         if (!opt_linker) {
-            opts_.push_back("-L" + bindir_ + "optlink.exe");
+		 #if defined USE_WLINK
+			string wlink = ccpath_;
+			wlink.resize(fname_base(wlink.c_str()) - wlink.c_str());
+			wlink += "wlink.exe";
+			if (file_exist(wlink.c_str()))
+            	opts_.push_back("-L" + wlink);
+			else
+		 #endif
+            	opts_.push_back("-L" + bindir_ + "optlink.exe");
         }
         size_t num = opts_.size() + files_.size();
         dst_args_.reserve(num + 1);

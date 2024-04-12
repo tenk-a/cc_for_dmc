@@ -8,6 +8,8 @@ cmake ＆ gnu make を使って dmc でのコンパイルを試しみるため�
 
 ## 利用方法
 
+以下のいずれか１つを行う。
+
 - bin\dmc-cc.exe を dmc.exe のあるフォルダに入れる
 - 環境変数 DMC_DIR か DMC に dmc ディレクトリを設定しておく
 - dmc ディレクトリを c:\dm、c:\DMC\dm、c:\dmc にする  
@@ -15,7 +17,6 @@ cmake ＆ gnu make を使って dmc でのコンパイルを試しみるため�
 　　　　　 \DMC\dm　dmd の installer で一緒に install した場合.  
 　　　　　 \dmc　　 https://github.com/digitalmars/dmc をままcloneした場合.
 
-のいずれかを行う。
 
 ## ビルド
 
@@ -97,9 +98,11 @@ set CXX=dmc-cc.exe
 をしてから cmake すること。
 
 cmake の引数で指定した -DCMAKE_C_COMPILER や -DCMAKE_CXX_COMPILER が有効になる前に、
-別途 -G "MinGW32 Makefiles" 側のコンパイラの動作テストが行われるようで、
+別途 -G "Unix Makefiles" 側のコンパイラの動作テストが行われるようで、
 環境変数で指定しないとコンパイラを置き換えられなかった。  
 ※環境変数なしだと cl.exe が gccのオプション形式で使われるという奇妙な状態になる…
 
 簡単なオプションの変換しかしておらず、ライブラリ関係や拡張子等いろいろ違いがあるので、
 gccままの設定でビルドを通せるわけでないので、夢はみないように、と。
+（初回リンク・エラーがおこっても、２回目をするとリンクできることもあり）
+
